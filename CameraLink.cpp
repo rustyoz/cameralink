@@ -43,6 +43,7 @@ int CameraLink::CameraLinkInit()
 	{
 		memset(this, 0, sizeof(CameraLink));
 
+		
 
 		this->videoinfo.nVideoPort = 554;
 		this->videoinfo.nVideoChannle = 0;
@@ -191,22 +192,28 @@ int CameraLink::CameraLinkInit()
 	{
 		CameraLink *camlink = (CameraLink *)pUser;
 
+		while (camlink->frameread != 0)
+		{
+
+		}
+		
 
 		Rect roi = Rect(0, 0, 1280, 720);
 
 		uchar *pBuffer = (uchar*)(pBuf + 16);
-		Mat yframe = Mat(720, 1312, CV_8U);
-		memcpy((char*)yframe.data, (char*)pBuffer, 720 * 1312 * sizeof(char));
+		Mat yframe = Mat(720, 1312, CV_8U, pBuffer);
+
+		//memcpy_s((char*)yframe.data, (char*)pBuffer, 720 * 1312 * sizeof(char),  720 * 1312 * sizeof(char));
 		camlink->lastyframe = yframe;
 
 		pBuffer = pBuffer + (720 * 1312);
-		Mat uframe = Mat(360, 656, CV_8U);
-		memcpy((char*)uframe.data, (char*)pBuffer, 360 * 656 * sizeof(char));
+		Mat uframe = Mat(360, 656, CV_8U, pBuffer);
+		//memcpy_s((char*)uframe.data, (char*)pBuffer, 360 * 656 * sizeof(char),  720 * 1312 * sizeof(char));
 		resize(uframe, camlink->lastuframe, Size(1312, 720), 0, 0, CV_INTER_LINEAR);
 
 		pBuffer = pBuffer + (360 * 656);
-		Mat vframe = Mat(360, 656, CV_8U);
-		memcpy((char*)vframe.data, (char*)pBuffer, 360 * 656 * sizeof(char));
+		Mat vframe = Mat(360, 656, CV_8U, pBuffer);
+		//memcpy_s((char*)vframe.data, (char*)pBuffer, 360 * 656 * sizeof(char),  720 * 1312 * sizeof(char));
 		resize(vframe, camlink->lastvframe, Size(1312, 720), 0, 0, CV_INTER_LINEAR);
 
 		std::vector<cv::Mat> frames;
@@ -222,6 +229,7 @@ int CameraLink::CameraLinkInit()
 		cvtColor(camlink->lastyuvframe, frame, CV_YUV2BGR);
 
 		camlink->lastbgrframe = frame(roi);
+		camlink->frameread = 1;
 		//camlink->fps.update();
 		/*
 		ofstream rawimage("bgrimage.bin");
@@ -232,7 +240,7 @@ int CameraLink::CameraLinkInit()
 		yuvimage.close();
 		*/
 
-		camlink->frameread = 1;
+		
 
 
 
@@ -240,20 +248,21 @@ int CameraLink::CameraLinkInit()
 
 
 	}
+
 
 	bool CameraLink::ReadFrame(Mat& image)
 	{
 		if (this->frameread == 1)
 		{
-			image = this->lastbgrframe;
-			this->frameread = 2;
-			return true;
+			image = this->lastbgrframe.clone();
+			this->frameread = 0;
 		}
 		else
-			image.release();
-		return 0;
-
+		return false;
 	}
+		
+
+	
 	void CameraLink::SetOnMediaRecvDataCallback(CameraLink *camlink)
 	{
 		camlink->mrcallback = &camlink->OnMediaDataRecv;
@@ -268,3 +277,10 @@ int CameraLink::CameraLinkInit()
 		return 0;
 	}
 
+	void CameraLink::Close()
+	{
+		
+		IP_NET_DVR_StopRealPlay(this->lRealHandle);
+		IP_TPS_ReleaseAll();
+		IP_NET_DVR_Cleanup();
+	}

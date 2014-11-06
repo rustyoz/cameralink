@@ -1,13 +1,12 @@
-//#include "stdafx.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <fstream>
 #include <Windows.h>
 #include "NetSDKDLL.h"
 #include "DllPlayer.h"
-#include "stdafx.h"
 #include <string.h>
 #include "FPS.h"
+#include <queue>
 
 using namespace std;
 using namespace cv;
@@ -44,6 +43,7 @@ private:
 
 
 
+
 public:
 	CameraLink(string ipaddress, string username, string password, int port);
 	int CameraLinkInit();
@@ -55,7 +55,9 @@ public:
 	static LONG __stdcall OnRealDataCallBack(LONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, LPFRAME_EXTDATA  pExtData);
 	static LONG __stdcall OnStatusEventCallBack(LONG lUser, LONG nStateCode, char *pResponse, void *pUser);
 	static int __stdcall OnMediaDataRecv(long nPort, char * pBuf, long nSize, FRAME_INFO * pFrameInfo, void * pUser, long nReserved2);
-	bool CameraLink::ReadFrame(Mat &image);
+	bool CameraLink::ReadFrame(Mat& image);
+
+	void __stdcall CameraLink::Close();
 
 	int loggedin = 0;
 	LONG lUserID = 0;
