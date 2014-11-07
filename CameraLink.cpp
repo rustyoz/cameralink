@@ -1,4 +1,5 @@
 #include "CameraLink.h"
+#include "common_head.h"
 
 using namespace std;
 using namespace cv;
@@ -8,6 +9,7 @@ using namespace cv;
 int CameraLink::CameraLinkInit()
 	{
 
+
 		this->SetRealDataCallBack(this);
 		this->SetOnMediaRecvDataCallback(this);
 		IP_NET_DVR_SetStatusEventCallBack(this->OnStatusEventCallBack, this);
@@ -15,13 +17,11 @@ int CameraLink::CameraLinkInit()
 		int success = 1;
 		if (IP_NET_DVR_Init() == 0)
 		{
-			if (IP_TPS_Init() == 0)
-			{
 				cout << "IP_NET_DVR_INIT success\n";
 				success = 0;
-			}
 
 		}
+
 		return success;
 	}
 
@@ -43,16 +43,16 @@ int CameraLink::CameraLinkInit()
 	{
 		memset(this, 0, sizeof(CameraLink));
 
-		
+        this->decoder = Decoder(AV_CODEC_ID_H264, this->mrcallback);
 
 		this->videoinfo.nVideoPort = 554;
 		this->videoinfo.nVideoChannle = 0;
 		this->videoinfo.pUserData = this;
 
-		strcpy_s(user.userName, username.c_str());
-		strcpy_s(user.password, password.c_str());
+		strcpy(user.userName, username.c_str());
+		strcpy(user.password, password.c_str());
 		devinfo.streamCfg.ptzPort = port;
-		strcpy_s(devinfo.lanCfg.IPAddress, ipaddress.c_str());
+		strcpy(devinfo.lanCfg.IPAddress, ipaddress.c_str());
 		devinfo.userCfg.accounts[0] = user;
 		m_bSetParam = -1;
 
@@ -121,7 +121,8 @@ int CameraLink::CameraLinkInit()
 
 		if (dwDataType == 0)
 		{
-			return IP_TPS_InputVideoData(0, pBuffer, dwBufSize, pExtData->bIsKey, (int)pExtData->timestamp);
+            camlink->decoder.DecodeStreamData((unsigned char*)pBuffer, dwBufSize, camlink);
+			//return IP_TPS_InputVideoData(0, pBuffer, dwBufSize, pExtData->bIsKey, (int)pExtData->timestamp);
 		}
 		else if (dwDataType == 1)
 		{
@@ -129,10 +130,12 @@ int CameraLink::CameraLinkInit()
 		}
 		else if (dwDataType == 2 && camlink->m_bSetParam == -1)
 		{
+
 			STREAM_AV_PARAM *pavParam = (STREAM_AV_PARAM *)pBuffer;
 			memcpy(&camlink->avParam, pavParam, sizeof(STREAM_AV_PARAM));
 
-			long lRet = IP_TPS_OpenStream(0, (BYTE *)&(camlink->avParam.videoParam), sizeof(VIDEO_PARAM), 0, 1);
+
+			/*long lRet = IP_TPS_OpenStream(0, (BYTE *)&(camlink->avParam.videoParam), sizeof(VIDEO_PARAM), 0, 1);
 			if (lRet != 0)
 			{
 				cout << "Video IP_TPS_OpenStream faild!!!" << "\n";
@@ -141,6 +144,7 @@ int CameraLink::CameraLinkInit()
 			IP_TPS_SetDecCallBack(0, OnMediaDataRecv, camlink);
 			camlink->m_bSetParam = 1;
 			IP_TPS_Play(0, 0);
+			*/
 		}
 
 
@@ -187,16 +191,28 @@ int CameraLink::CameraLinkInit()
 		return result;
 	}
 
+    void CameraLink::OnFrameRecv(void *pcamlink, cv::Mat frame)
+    {
+        CameraLink *camlink = (CameraLink *)pcamlink;
+        while (camlink->frameread != 0){}
 
+        Rect roi = Rect(0, 0, 1280, 720);
+        camlink->lastbgrframe = frame(roi);
+        camlink->frameread = 1;
+    }
+
+    /*
 	int __stdcall CameraLink::OnMediaDataRecv(long nPort, char * pBuf, long nSize, FRAME_INFO * pFrameInfo, void * pUser, long nReserved2)
 	{
 		CameraLink *camlink = (CameraLink *)pUser;
 
+
 		while (camlink->frameread != 0)
 		{
 
+
 		}
-		
+
 
 		Rect roi = Rect(0, 0, 1280, 720);
 
@@ -238,9 +254,9 @@ int CameraLink::CameraLinkInit()
 		yuvimage.write(pBuf+16, nSize-16);
 		rawimage.close();
 		yuvimage.close();
-		*/
 
-		
+
+
 
 
 
@@ -249,6 +265,7 @@ int CameraLink::CameraLinkInit()
 
 	}
 
+*/
 
 	bool CameraLink::ReadFrame(Mat& image)
 	{
@@ -256,31 +273,33 @@ int CameraLink::CameraLinkInit()
 		{
 			image = this->lastbgrframe.clone();
 			this->frameread = 0;
+			return true;
 		}
 		else
 		return false;
 	}
-		
 
-	
+
+
 	void CameraLink::SetOnMediaRecvDataCallback(CameraLink *camlink)
 	{
-		camlink->mrcallback = &camlink->OnMediaDataRecv;
+		camlink->mrcallback = &camlink->OnFrameRecv;
 	}
 
 	LONG __stdcall CameraLink::OnLoginOkCallBack(CameraLink *camlink)
 	{
 		fRealDataCallBack cb = camlink->OnRealDataCallBack;
 		camlink->videoinfo.pUserData = camlink;
-		camlink->lRealHandle = IP_NET_DVR_RealPlayEx(camlink->lUserID, camlink->devinfo.lanCfg.IPAddress, camlink->devinfo.userCfg.accounts[0].userName, camlink->devinfo.userCfg.accounts[0].password, cb, &camlink->videoinfo, 0);
+
+		camlink->lRealHandle = IP_NET_DVR_RealPlayEx(camlink->devinfo.lanCfg.IPAddress, camlink->devinfo.userCfg.accounts[0].userName, camlink->devinfo.userCfg.accounts[0].password, cb, &camlink->videoinfo, 0);
 
 		return 0;
 	}
 
 	void CameraLink::Close()
 	{
-		
+
 		IP_NET_DVR_StopRealPlay(this->lRealHandle);
-		IP_TPS_ReleaseAll();
+
 		IP_NET_DVR_Cleanup();
 	}

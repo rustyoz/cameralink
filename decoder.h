@@ -1,27 +1,34 @@
-#include "libavcodec\avcodec.h"
-#include "libavutil\frame.h"
-#include "libswscale\swscale.h"
-#include "opencv.hpp"
+#ifndef DECODER_H
+#define DECODER_H
 
-typedef int (__stdcall *decodecallback)(cv::Mat frame);
+#include <libavcodec/avcodec.h>
+//#include <libavutil/frame>
+#include <libswscale/swscale.h>
+#include <opencv2/opencv.hpp>
 
-class decoder
+
+typedef void (*decodeCallBack)(void *camlink, cv::Mat);
+
+class Decoder
 {
 	private:
-		cv::Mat avframe_to_cvmat(AVFrame *frame); 
+		cv::Mat avframe_to_cvmat(AVFrame *frame);
 
 protected:
 	AVCodecContext  *m_pCodecCtx;
 	AVCodec         *m_pCodec;
 	AVFrame         *m_pFrame;
-	decodecallback  m_callback;
+	decodeCallBack  m_callback;
 public:
-	decoder(AVCodecID decoder, decodecallback callback);
+    Decoder();
+	Decoder(AVCodecID decoder, decodeCallBack callback);
 
-	~decoder();
-	
+	~Decoder();
 
-	void decodeStreamData(unsigned char * pData, size_t sz);
+
+	void DecodeStreamData(unsigned char * pData, size_t sz, void* pcamlink);
 
 
 };
+
+#endif // DECODER_H

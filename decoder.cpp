@@ -1,29 +1,32 @@
-#include "libavcodec\avcodec.h"
-#include "libavutil\frame.h"
-#include "libswscale\swscale.h"
-#include "opencv.hpp"
+#include <libavcodec/avcodec.h>
+#include <libavutil/frame.h>
+#include <libswscale/swscale.h>
+#include <opencv2/opencv.hpp>
 #include "decoder.h"
 
 
 
-    decoder::decoder(AVCodecID decoder, decodecallback callback) 
-    {       
-		
+    Decoder::Decoder()
+    {};
+
+    Decoder::Decoder(AVCodecID decoder, decodeCallBack callback)
+    {
+
         m_pCodec= avcodec_find_decoder(decoder);
         m_pCodecCtx = avcodec_alloc_context3(m_pCodec);
         avcodec_open2(m_pCodecCtx,m_pCodec,0);
 		m_pFrame = av_frame_alloc();
 		m_callback = callback;
-		
+
     }
 
-    decoder::~decoder()
+    Decoder::~Decoder()
     {
         av_free(m_pFrame);
         avcodec_close(m_pCodecCtx);
     }
 
-	cv::Mat decoder::avframe_to_cvmat(AVFrame *frame)
+	cv::Mat Decoder::avframe_to_cvmat(AVFrame *frame)
 	{
 		AVFrame dst;
 		cv::Mat m;
@@ -47,7 +50,7 @@
 		return m;
 	}
 
-	void decoder::decodeStreamData(unsigned char * pData, size_t sz)
+	void Decoder::DecodeStreamData(unsigned char * pData, size_t sz, void* pcamlink)
     {
         AVPacket        packet;
         av_init_packet(&packet);
@@ -55,18 +58,18 @@
         packet.data=pData;
         packet.size=(int)sz;
         int framefinished=0;
-        int nres=avcodec_decode_video2(m_pCodecCtx,m_pFrame,&framefinished,&packet);
+        int nres = avcodec_decode_video2(this->m_pCodecCtx,this->m_pFrame,&framefinished,&packet);
 
         if(framefinished)
         {
 			cv::Mat frame = avframe_to_cvmat(m_pFrame);
 
-			this->m_callback(frame);
-              
+			this->m_callback(pcamlink, frame);
+
         }
 
         return;
     }
 
-	
+
 

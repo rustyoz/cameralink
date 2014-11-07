@@ -1,12 +1,16 @@
+#ifndef CAMERALINK_H
+#define CAMERALINK_H
+
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <fstream>
-#include <Windows.h>
+
 #include "NetSDKDLL.h"
-#include "DllPlayer.h"
-#include <string.h>
+#include "decoder.h"
+
 #include "FPS.h"
-#include <queue>
+
 
 using namespace std;
 using namespace cv;
@@ -29,10 +33,10 @@ private:
 	Mat	YUVToBGR(uchar *pBuffer, long bufferSize, int width, int height);
 	STREAM_AV_PARAM avParam;
 
-
+    Decoder decoder;
 	UserAccount user;
 
-	fDecCallBackFunction mrcallback;
+	decodeCallBack mrcallback;
 
 	LONG lRealHandle;
 	USRE_VIDEOINFO videoinfo;
@@ -47,17 +51,18 @@ private:
 public:
 	CameraLink(string ipaddress, string username, string password, int port);
 	int CameraLinkInit();
-	void CameraLink::SetRealDataCallBack(CameraLink *camlink);
-	void CameraLink::SetOnMediaRecvDataCallback(CameraLink *camlink);
+	void SetRealDataCallBack(CameraLink *camlink);
+	void SetOnMediaRecvDataCallback(CameraLink *camlink);
 
 	static void CameraLinkLogin(CameraLink *camlink);
 	static long __stdcall OnLoginOkCallBack(CameraLink *camlink);
 	static LONG __stdcall OnRealDataCallBack(LONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, LPFRAME_EXTDATA  pExtData);
 	static LONG __stdcall OnStatusEventCallBack(LONG lUser, LONG nStateCode, char *pResponse, void *pUser);
-	static int __stdcall OnMediaDataRecv(long nPort, char * pBuf, long nSize, FRAME_INFO * pFrameInfo, void * pUser, long nReserved2);
-	bool CameraLink::ReadFrame(Mat& image);
+//	static int __stdcall OnMediaDataRecv(long nPort, char * pBuf, long nSize, FRAME_INFO * pFrameInfo, void * pUser, long nReserved2);
+    static void OnFrameRecv(void *pcamlink, cv::Mat frame);
+	bool ReadFrame(Mat& image);
 
-	void __stdcall CameraLink::Close();
+	void __stdcall Close();
 
 	int loggedin = 0;
 	LONG lUserID = 0;
@@ -71,3 +76,6 @@ public:
 
 	Fps fps;
 };
+
+#endif // CAMERALINK_H
+
